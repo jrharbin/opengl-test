@@ -1,5 +1,3 @@
-(defparameter *wick-left-spacing* 0.4)
-(defparameter *wick-width* 0.15)
 (defparameter *frame-count-interval* 50)
 
 (defun debug-log (msg &rest args)
