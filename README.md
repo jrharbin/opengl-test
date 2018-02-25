@@ -1,6 +1,7 @@
  # Readme file
 
 Test of OpenGL with SDL inside a thread, with FPS tracking and keyboard input
+
 Start with (gui)
 
 Renders a single triangle in animated motion across the display.
