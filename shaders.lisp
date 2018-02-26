@@ -1,42 +1,22 @@
-(defparameter *chart-fragment-prog*
-  "#version 330
-
-out vec4 out_Color;
-smooth in vec2 pos;
-
-uniform float angle;
-
-void main() 
-{
-  mat2 rotationMatrix = mat2( cos(angle), sin(angle), -sin(angle), cos(angle) );
-  vec2 rpos = mod(rotationMatrix * pos, 2.0 );
-  
-  if ((rpos.x > 1.0 && rpos.y > 1.0 ) || (rpos.x < 1.0 && rpos.y < 1.0))
-    out_Color = vec4(0.1, 0.1, 0.1, 1.0); 
-  else
-    out_Color = vec4(0.5, 0.5, 0.7, 1.0);
-}")
-
 (defparameter *chart-vertex-prog*
   "#version 330
 
-// The location is 0 because that's the vertex attribute we associate with vertex positions.
 layout (location = 0) in vec3 in_Position;
-
-uniform mat4 projectionMatrix;
-uniform float angle;
-
-// This is interpolated and used in the fragment shader.
-smooth out vec2 pos;
 
 void main()
 {
-  mat2 rotationMatrix = mat2(cos(angle), sin(angle), -sin(angle), cos(angle));
-  float scaleFactor = 1.0 + 0.5 * sin(1.75 * angle);
-  vec2 vertPos = scaleFactor * rotationMatrix * in_Position.xy;
-  pos = vertPos * 5.0;
+  gl_Position = vec4(in_Position, 1.0);
+} 
+")
 
-  gl_Position = projectionMatrix * vec4(vertPos, 0.0, 1.0); 
+(defparameter *chart-fragment-prog*
+    "#version 330
+
+out vec4 out_Color;
+
+void main() 
+{
+    out_Color = vec4(1.0, 1.0, 1.0, 1.0); 
 } 
 ")
 

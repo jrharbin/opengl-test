@@ -1,5 +1,9 @@
 (defparameter *frame-count-interval* 50)
 
+(defvar *triangle-vbo*)
+(defvar *index-buf*)
+(defvar *geometry-vao*)
+
 (defun debug-log (msg &rest args)
   "Output and flush MSG to STDOUT with arguments ARGS"
   (apply #'format t msg args)
@@ -16,7 +20,59 @@
   (gl:matrix-mode :modelview)
   (gl:load-identity)
   ;; Clear to white
-  (gl:clear-color 1.0 1.0 1.0 1.0))
+  (gl:clear-color 0.0 0.0 0.0 0.0))
+
+(defun copy-lisp-array-to-buffer (lispdata a)
+  (dotimes (i (length lispdata))
+    (setf (gl:glaref a i) (aref lispdata i))))
+
+(defun setup-state ()
+  "Sets up the state for rendering the triangle"
+  (setf *triangle-vbo* (gl:gen-buffer))
+  (setf *index-buf* (gl:gen-buffer))
+  (format t "Triangle VBO: ~A~%" *triangle-vbo*)
+  (let ((arr (gl:alloc-gl-array :float 12))
+	(verts #(-0.5 -0.5 0.0 
+		 -0.5 0.5 0.0 
+		 0.5 -0.5 0.0 
+		 0.5 0.5 0.0)))
+    (gl:bind-buffer :array-buffer *triangle-vbo*)
+    (gl:buffer-data :array-buffer :static-draw arr)
+    (copy-lisp-array-to-buffer verts arr)
+    (gl:free-gl-array arr))
+  (gl:bind-buffer :array-buffer 0)
+
+  (let ((arr (gl:alloc-gl-array :unsigned-short 6))
+	(indexes #(0 2 1 1 2 3)))
+    (gl:bind-buffer :element-array-buffer *index-buf*)
+    (gl:buffer-data :element-array-buffer :static-draw arr)
+    (copy-lisp-array-to-buffer indexes arr)
+    (gl:free-gl-array arr))
+  (gl:bind-buffer :element-array-buffer 0)
+
+  ;; Vertex array objects manage which vertex attributes are
+  ;; associated with which data buffers. 
+  (setf *geometry-vao* (gl:gen-vertex-array))
+  (gl:bind-vertex-array *geometry-vao*)
+
+  ;; To associate our VBO data with this VAO, we bind it, specify
+  ;; which vertex attribute we want to associate it with, and specify
+  ;; where the data comes from.
+  (gl:bind-buffer :array-buffer *triangle-vbo*)
+  ;; In this program, we use attribute 0 for position. If you had
+  ;; per-vertex normals, you could use a different attribute for those
+  ;; as well.
+  (gl:enable-vertex-attrib-array 0)
+  ;; Using a null pointer as the data source indicates that we want
+  ;; the vertex data to come from the currently bound array-buffer.
+  (gl:vertex-attrib-pointer 0 3 :float nil 0 (cffi:null-pointer))
+
+  ;; To associate an element array with this VAO, all we need to do is
+  ;; bind the element array buffer we want to use.
+  (gl:bind-buffer :element-array-buffer *index-buf*)
+
+  ;; Once we're done, we can unbind the VAO, and rebind it when we want to render it.
+  (gl:bind-vertex-array 0))
 
 (defun count-frames (frame-tracker)
   (decf (car frame-tracker))
@@ -33,10 +89,11 @@
 	(dh (sdl2:surface-height dst)))
     (sdl2:blit-surface src (sdl2:make-rect 0 0 sw sh) dst (sdl2:make-rect 0 0 dw dh))))
 
-(defun render (frame-tracker pos)
-  "Renders the current frame"
+(defun render-old (frame-tracker pos vpos)
+  (declare (ignore vpos))
+  "Renders the current frame the old way"
   (count-frames frame-tracker)
-  (gl:clear-color 1.0 1.0 1.0 1.0)
+  (gl:clear-color 0.0 0.0 0.0 0.0)
   (gl:clear :color-buffer)
   ;; Draw a demo triangle
   (gl:begin :triangles)
@@ -45,24 +102,36 @@
   (gl:vertex (- pos 0.618) -1.618)
   (gl:vertex (+ pos 0.618) -1.618)
   (gl:end)
-  (gl:flush))
+(gl:flush))
+
+(defun render (frame-tracker pos vpos)
+  (declare (ignore pos vpos))
+  "Renders the current frame"
+  (count-frames frame-tracker)
+  (gl:clear-color 0.0 0.0 0.0 1.0)
+  (gl:clear :color-buffer-bit :depth-buffer-bit)
+  (gl:bind-vertex-array *geometry-vao*)
+  (gl:draw-elements :triangles (gl:make-null-gl-array :unsigned-short) :count 6))
 
 ;; Output goes to slime buffer *inferior-lisp*
 ;; Let over lambda
 (let ((pos 1.0)
+      (vpos 0.0)
       (running t)
-;      (shader-holder (make-instance 'shader-holders))
+      (shader-holder (make-instance 'shader-holders))
       (frame-tracker (cons 0 0)) ; Format is (frames_remaining, last_timestamp)
-      (direction 0.01))
+      (direction 0.02))
 
   (defun process-key (keysym)
     (let ((scancode (sdl2:scancode-value keysym))
 	  (sym (sdl2:sym-value keysym))
 	  (mod-value (sdl2:mod-value keysym)))
       (cond
-	((sdl2:scancode= scancode :scancode-w) (format t "~a~%" "WALK"))
 	((sdl2:scancode= scancode :scancode-a) (decf pos 0.1))
 	((sdl2:scancode= scancode :scancode-d) (incf pos 0.1))
+	((sdl2:scancode= scancode :scancode-w) (incf vpos 0.1))
+	((sdl2:scancode= scancode :scancode-s) (decf vpos 0.1))
+	
 	; ESC scancode has to be set as 41
 	((sdl2:scancode= scancode 41) (setf running nil)))
       (format t "Key sym: ~a, code: ~a, mod: ~a~%"
@@ -83,13 +152,15 @@
 	(sdl2:with-gl-context (gl-context win)
 
 	  (setup-gl win gl-context 800 600)
-	  ; Setup the GL shader holders
-;	  (setup-shaders shader-holder)
+          ; Setup the GL shader holders
+	  (setup-shaders shader-holder)
+	  (setup-state)
 	  (sdl2:with-event-loop (:method :poll)
 	    (:keydown (:keysym keysym)
 		      (process-key keysym))
 	    (:idle ()
-		   (render frame-tracker pos)
+;		   (render-old frame-tracker pos vpos)
+		   (render frame-tracker pos vpos)
 		   (sdl2:gl-swap-window win)
 		   (change-pos)
 		   (if (not running) (sdl2:push-event :quit)))
