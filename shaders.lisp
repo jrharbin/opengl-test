@@ -1,24 +1,25 @@
 (defparameter *chart-vertex-prog*
   "#version 330
 
+// The location is 0 because that's the vertex attribute we associate with vertex positions.
 layout (location = 0) in vec3 in_Position;
 
 void main()
 {
-  gl_Position = vec4(in_Position, 1.0);
+  gl_Position = vec4(in_Position, 1.0); 
 } 
 ")
 
 (defparameter *chart-fragment-prog*
-    "#version 330
-
+  "#version 330
 out vec4 out_Color;
-
 void main() 
 {
     out_Color = vec4(1.0, 1.0, 1.0, 1.0); 
 } 
-")
+"
+
+  )
 
 (defclass shader-holders ()
   ((vs :accessor vertex-shader)

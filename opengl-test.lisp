@@ -20,7 +20,8 @@
   (gl:matrix-mode :modelview)
   (gl:load-identity)
   ;; Clear to white
-  (gl:clear-color 0.0 0.0 0.0 0.0))
+  (gl:clear-color 0.0 0.0 0.0 0.0)
+  (gl:clear-depth 1.0))
 
 (defun copy-lisp-array-to-buffer (lispdata a)
   (dotimes (i (length lispdata))
@@ -37,16 +38,16 @@
 		 0.5 -0.5 0.0 
 		 0.5 0.5 0.0)))
     (gl:bind-buffer :array-buffer *triangle-vbo*)
-    (gl:buffer-data :array-buffer :static-draw arr)
     (copy-lisp-array-to-buffer verts arr)
+    (gl:buffer-data :array-buffer :static-draw arr)
     (gl:free-gl-array arr))
   (gl:bind-buffer :array-buffer 0)
 
   (let ((arr (gl:alloc-gl-array :unsigned-short 6))
 	(indexes #(0 2 1 1 2 3)))
     (gl:bind-buffer :element-array-buffer *index-buf*)
-    (gl:buffer-data :element-array-buffer :static-draw arr)
     (copy-lisp-array-to-buffer indexes arr)
+    (gl:buffer-data :element-array-buffer :static-draw arr)
     (gl:free-gl-array arr))
   (gl:bind-buffer :element-array-buffer 0)
 
@@ -65,7 +66,7 @@
   (gl:enable-vertex-attrib-array 0)
   ;; Using a null pointer as the data source indicates that we want
   ;; the vertex data to come from the currently bound array-buffer.
-  (gl:vertex-attrib-pointer 0 3 :float nil 0 (cffi:null-pointer))
+  (gl:vertex-attrib-pointer 0 2 :float nil 0 (cffi:null-pointer))
 
   ;; To associate an element array with this VAO, all we need to do is
   ;; bind the element array buffer we want to use.
@@ -82,13 +83,6 @@
 	(setf (car frame-tracker) *frame-count-interval*)
 	(format t "FPS: ~A~%" (/ *frame-count-interval* tdiff 0.001)))))
 
-(defun blit-all (src dst)
-  (let ((sw (sdl2:surface-width  src))
-	(sh (sdl2:surface-height src))
-	(dw (sdl2:surface-width  dst))
-	(dh (sdl2:surface-height dst)))
-    (sdl2:blit-surface src (sdl2:make-rect 0 0 sw sh) dst (sdl2:make-rect 0 0 dw dh))))
-
 (defun render-old (frame-tracker pos vpos)
   (declare (ignore vpos))
   "Renders the current frame the old way"
@@ -102,16 +96,20 @@
   (gl:vertex (- pos 0.618) -1.618)
   (gl:vertex (+ pos 0.618) -1.618)
   (gl:end)
-(gl:flush))
+  (gl:flush))
 
-(defun render (frame-tracker pos vpos)
+(defun render (shader-holder frame-tracker pos vpos)
   (declare (ignore pos vpos))
   "Renders the current frame"
   (count-frames frame-tracker)
-  (gl:clear-color 0.0 0.0 0.0 1.0)
+
+  (gl:disable :cull-face)
+  (gl:use-program (program shader-holder))
+  (gl:clear-color 0.0 0.0 0.2 1.0)
   (gl:clear :color-buffer-bit :depth-buffer-bit)
   (gl:bind-vertex-array *geometry-vao*)
-  (gl:draw-elements :triangles (gl:make-null-gl-array :unsigned-short) :count 6))
+  (gl:draw-elements :triangles (gl:make-null-gl-array :unsigned-short) :count 6)
+  (gl:flush))
 
 ;; Output goes to slime buffer *inferior-lisp*
 ;; Let over lambda
@@ -139,7 +137,7 @@
 	      scancode
 	      mod-value)))
   
-  (defun main-loop ()
+  (defun main-loop (&key (use-old t))
     "Run the game loop that handles input, rendering through the
     render function RENDER-FN, amongst others."
     (setf running t)   
@@ -152,15 +150,16 @@
 	(sdl2:with-gl-context (gl-context win)
 
 	  (setup-gl win gl-context 800 600)
-          ; Setup the GL shader holders
-	  (setup-shaders shader-holder)
+          ; Setup the GL shader holders - if new system
+	  (if (not use-old) (setup-shaders shader-holder))
 	  (setup-state)
 	  (sdl2:with-event-loop (:method :poll)
 	    (:keydown (:keysym keysym)
 		      (process-key keysym))
 	    (:idle ()
-;		   (render-old frame-tracker pos vpos)
-		   (render frame-tracker pos vpos)
+		   (if use-old
+		       (render-old frame-tracker pos vpos)
+		       (render shader-holder frame-tracker pos vpos))
 		   (sdl2:gl-swap-window win)
 		   (change-pos)
 		   (if (not running) (sdl2:push-event :quit)))
@@ -172,13 +171,13 @@
 
   (defun quit-gui () (setf running nil))
 
-  (defun threaded-loop ()
-    (bt:make-thread (lambda () (main-loop))
+  (defun threaded-loop (&key (use-old t))
+    (bt:make-thread (lambda () (main-loop :use-old use-old))
 		    :name "GUIRenderThread"))
 
   (defun set-pos (p) (setf pos p)))
 
 
 ;; Start the GUI
-(defun gui ()
-  (threaded-loop))
+(defun gui (&key (use-old t))
+  (threaded-loop :use-old use-old))
