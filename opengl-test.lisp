@@ -33,10 +33,10 @@
   (setf *index-buf* (gl:gen-buffer))
   (format t "Triangle VBO: ~A~%" *triangle-vbo*)
   (let ((arr (gl:alloc-gl-array :float 12))
-	(verts #(-0.5 -0.5 0.0 
-		 -0.5 0.5 0.0 
-		 0.5 -0.5 0.0 
-		 0.5 0.5 0.0)))
+	(verts #(-0.5 -0.5 -1.0 
+		 -0.5 0.5 -1.0 
+		 0.5 -0.5 -1.0 
+		 0.5 0.5 -1.0)))
     (gl:bind-buffer :array-buffer *triangle-vbo*)
     (copy-lisp-array-to-buffer verts arr)
     (gl:buffer-data :array-buffer :static-draw arr)
@@ -66,7 +66,7 @@
   (gl:enable-vertex-attrib-array 0)
   ;; Using a null pointer as the data source indicates that we want
   ;; the vertex data to come from the currently bound array-buffer.
-  (gl:vertex-attrib-pointer 0 2 :float nil 0 (cffi:null-pointer))
+  (gl:vertex-attrib-pointer 0 3 :float nil 0 (cffi:null-pointer))
 
   ;; To associate an element array with this VAO, all we need to do is
   ;; bind the element array buffer we want to use.
@@ -99,7 +99,6 @@
   (gl:flush))
 
 (defun render (shader-holder frame-tracker pos vpos)
-  (declare (ignore pos vpos))
   "Renders the current frame"
   (count-frames frame-tracker)
 
@@ -107,6 +106,10 @@
   (gl:use-program (program shader-holder))
   (gl:clear-color 0.0 0.0 0.2 1.0)
   (gl:clear :color-buffer-bit :depth-buffer-bit)
+
+  (gl:uniformf (gl:get-uniform-location (program shader-holder) "shift")
+	       pos vpos)
+  
   (gl:bind-vertex-array *geometry-vao*)
   (gl:draw-elements :triangles (gl:make-null-gl-array :unsigned-short) :count 6)
   (gl:flush))
@@ -167,7 +170,7 @@
 
   (defun change-pos ()
     (incf pos direction)
-    (if (> (abs pos) 2) (setf direction (- 0 direction))))
+    (if (> (abs pos) 1) (setf direction (- 0 direction))))
 
   (defun quit-gui () (setf running nil))
 

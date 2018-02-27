@@ -3,10 +3,13 @@
 
 // The location is 0 because that's the vertex attribute we associate with vertex positions.
 layout (location = 0) in vec3 in_Position;
+uniform vec2 shift;
 
 void main()
 {
-  gl_Position = vec4(in_Position, 1.0); 
+  gl_Position = vec4(in_Position.x + shift.x, 
+                     in_Position.y + shift.y, 
+                     in_Position.z, 1.0); 
 } 
 ")
 
