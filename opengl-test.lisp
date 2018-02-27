@@ -182,5 +182,5 @@
 
 
 ;; Start the GUI
-(defun gui (&key (use-old t))
+(defun gui (&key (use-old nil))
   (threaded-loop :use-old use-old))
