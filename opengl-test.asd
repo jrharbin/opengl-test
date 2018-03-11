@@ -17,5 +17,6 @@
 		:cl-glu
 		:cl-glut)
   
-  :components ((:file "shaders")
-	       (:file "opengl-test" :depends-on ("shaders"))))
+  :components ((:file "vbo")
+	       (:file "shaders")
+	       (:file "opengl-test" :depends-on ("shaders" "vbo"))))

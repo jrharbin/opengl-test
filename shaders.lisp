@@ -8,7 +8,7 @@ uniform vec2 shift;
 void main()
 {
   gl_Position = vec4(in_Position.x + shift.x, 
-                     in_Position.y + shift.y, 
+                     in_Position.y + shift.y + gl_InstanceID / 5.0, 
                      in_Position.z, 1.0); 
 } 
 ")
