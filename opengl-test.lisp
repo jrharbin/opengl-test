@@ -39,13 +39,12 @@
 				   :data '#(0 2 1 1 2 3)))
 
   (setf *offset-vbo* (make-instance 'vbo
-				    :data '#(1.0 0.0
-					     2.0 0.0
-					     3.0 0.0
-					     4.0 0.0
-					     5.0 0.0
-					     6.0 0.0)))
-
+				    :data '#(1.0
+					     2.0
+					     3.0
+					     4.0
+					     5.0
+					     6.0)))
   (setf *ohlc-vbo* (make-instance 'vbo
 				  :data '#(0.2 0.7 0.2 0.4
 					   0.1 0.7 0.2 0.5
@@ -80,7 +79,7 @@
   (let ((shift-loc (gl:get-attrib-location (program shader-holder) "offset"))
 	(ohlc-loc (gl:get-attrib-location (program shader-holder) "ohlc")))
     (gl:bind-buffer :array-buffer (gl-id *offset-vbo*))
-    (gl:vertex-attrib-pointer shift-loc 2 :float 0 0 0)
+    (gl:vertex-attrib-pointer shift-loc 1 :float 0 0 0)
     (gl:enable-vertex-attrib-array shift-loc)
     (cl-opengl-bindings:vertex-attrib-divisor shift-loc 1)
 
@@ -100,7 +99,7 @@
       (running t)
       (shader-holder (make-instance 'shader-holders))
       (frame-tracker (cons 0 0)) ; Format is (frames_remaining, last_timestamp)
-      (direction 0.02))
+      (direction 0.002))
 
   (defun process-key (keysym)
     (let ((scancode (sdl2:scancode-value keysym))

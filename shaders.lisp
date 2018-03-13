@@ -15,6 +15,7 @@ layout (location = 2) in vec4 ohlc;
 void main()
 {
   float barHeight = ohlc.w - ohlc.x; // close - open
+  // Supply the colour into the vertex shader?
   float barSpacing = 0.1;             // Supply this as a uniform later
   float barWidth = 0.5;                // bar width as a portion of spacing
   gl_Position = vec4(((in_Position.x * barWidth + offset.x)) * barSpacing + shift.x,
