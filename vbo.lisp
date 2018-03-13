@@ -1,5 +1,5 @@
 (defclass vbo ()
-  ((size :reader size :initarg :size)
+  ((size :reader size :initarg :size :initform 0)
    (gl-id :reader gl-id)
    (element-type :initarg :element-type :initform :float)
    (vbo-type :initarg :vbo-type :initform :static-draw)))

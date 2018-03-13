@@ -5,12 +5,22 @@
 layout (location = 0) in vec3 in_Position;
 uniform vec2 shift;
 
+layout (location = 1) in vec2 offset;
+layout (location = 2) in vec4 ohlc;
+// O = x
+// H = y
+// L = z
+// C = w
+
 void main()
 {
-  gl_Position = vec4(in_Position.x + shift.x, 
-                     in_Position.y + shift.y + gl_InstanceID / 5.0, 
-                     in_Position.z, 1.0); 
-} 
+  float barHeight = ohlc.w - ohlc.x; // close - open
+  float barSpacing = 0.1;             // Supply this as a uniform later
+  float barWidth = 0.5;                // bar width as a portion of spacing
+  gl_Position = vec4(((in_Position.x * barWidth + offset.x)) * barSpacing + shift.x,
+                     (in_Position.y * barHeight) + ohlc.x + shift.y, 
+                     in_Position.z, 1.0);
+}
 ")
 
 (defparameter *chart-fragment-prog*
@@ -19,10 +29,8 @@ out vec4 out_Color;
 void main() 
 {
     out_Color = vec4(1.0, 1.0, 1.0, 1.0); 
-} 
-"
-
-  )
+}
+")
 
 (defclass shader-holders ()
   ((vs :accessor vertex-shader)
