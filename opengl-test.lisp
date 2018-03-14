@@ -45,13 +45,14 @@
 					     4.0
 					     5.0
 					     6.0)))
+  
   (setf *ohlc-vbo* (make-instance 'vbo
-				  :data '#(0.2 0.7 0.2 0.4
-					   0.1 0.7 0.2 0.5
+				  :data '#(0.2 0.7  0.2 0.4
+					   0.3 0.7  0.2 0.2
 					   0.05 0.7 0.2 0.6
-					   0.4 0.7 0.2 0.7
-					   0.3 0.7 0.2 0.8
-					   0.1 0.7 0.2 0.9)))
+					   0.4 0.7  0.2 0.7
+					   0.3 0.7  0.2 0.8
+					   0.1 0.7  0.2 0.9)))
   
   (setf *geometry-vao* (make-instance 'vao :vbo *square-vbo*
 					   :indices *index-buf*)))
@@ -64,17 +65,12 @@
 	(setf (car frame-tracker) *frame-count-interval*)
 	(format t "FPS: ~A~%" (/ *frame-count-interval* tdiff 0.001)))))
 
-(defun render (shader-holder frame-tracker pos vpos)
-  "Renders the current frame"
-  (count-frames frame-tracker)
-
-  (gl:disable :cull-face)
-  (gl:use-program (program shader-holder))
-  (gl:clear-color 0.0 0.0 0.2 1.0)
-  (gl:clear :color-buffer-bit :depth-buffer-bit)
-
+(defun render-pipeline-elt (shader-holder wick pos vpos)
   (gl:uniformf (gl:get-uniform-location (program shader-holder) "shift")
 	       pos vpos)
+
+  (gl:uniformf (gl:get-uniform-location (program shader-holder) "drawElement")
+	       (if wick -1.0 1.0))
 
   (let ((shift-loc (gl:get-attrib-location (program shader-holder) "offset"))
 	(ohlc-loc (gl:get-attrib-location (program shader-holder) "ohlc")))
@@ -87,9 +83,20 @@
     (gl:vertex-attrib-pointer ohlc-loc 4 :float 0 0 0)
     (gl:enable-vertex-attrib-array ohlc-loc)
     (cl-opengl-bindings:vertex-attrib-divisor ohlc-loc 1))
-   
+  
   (gl:bind-vertex-array (gl-id *geometry-vao*))
-  (gl:draw-elements-instanced :triangles (gl:make-null-gl-array :unsigned-short) *instance-count* :count 6)
+  (gl:draw-elements-instanced :triangles (gl:make-null-gl-array :unsigned-short)
+			      *instance-count* :count 6))
+
+(defun render (shader-holder frame-tracker pos vpos)
+  "Renders the current frame"
+  (count-frames frame-tracker)
+  (gl:clear-color 0.0 0.0 0.2 1.0)
+  (gl:clear :color-buffer-bit :depth-buffer-bit)
+  (gl:disable :cull-face)
+  (gl:use-program (program shader-holder)) 
+  (render-pipeline-elt shader-holder t pos vpos)
+  (render-pipeline-elt shader-holder nil pos vpos)
   (gl:flush))
 
 ;; Output goes to slime buffer *inferior-lisp*
@@ -99,7 +106,7 @@
       (running t)
       (shader-holder (make-instance 'shader-holders))
       (frame-tracker (cons 0 0)) ; Format is (frames_remaining, last_timestamp)
-      (direction 0.002))
+      (direction 0.0001))
 
   (defun process-key (keysym)
     (let ((scancode (sdl2:scancode-value keysym))

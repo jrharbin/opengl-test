@@ -3,33 +3,61 @@
 
 // The location is 0 because that's the vertex attribute we associate with vertex positions.
 layout (location = 0) in vec3 in_Position;
-uniform vec2 shift;
-
-layout (location = 1) in vec2 offset;
+layout (location = 1) in float offset;
 layout (location = 2) in vec4 ohlc;
+
+uniform vec2 shift;
+uniform float drawElement; // 1.0 = bar, -1.0 = wick
+
+out vec4 barColour;
 // O = x
 // H = y
 // L = z
 // C = w
 
+void drawBar() {
+  float barHeight = ohlc.w - ohlc.x;  // close - open
+  float barSpacing = 0.1;             // Supply this as a uniform later
+  float barWidth = 0.5;               // bar width as a portion of spacing
+  float barMin = min(ohlc.w, ohlc.x);
+
+  if (barHeight > 0) {
+     barColour = vec4(0.0, 1.0, 0.0, 1.0);
+  } else {
+     barColour = vec4(1.0, 0.0, 0.0, 1.0);
+  }
+
+  gl_Position = vec4(((in_Position.x * barWidth + offset)) * barSpacing + shift.x,
+                      (in_Position.y * abs(barHeight)) + barMin + shift.y, 
+                      in_Position.z, 1.0);
+}
+
+void drawWick() {
+  float barHeight = ohlc.y - ohlc.z;  // wick high - low
+  float barSpacing = 0.1;             // Supply this as a uniform later
+  float barWidth = 0.1;               // bar width as a portion of spacing
+  float barMin = min(ohlc.y, ohlc.z);
+
+  barColour = vec4(1.0, 1.0, 1.0, 1.0);
+  gl_Position = vec4(((in_Position.x * barWidth + offset)) * barSpacing + shift.x + 0.0225,
+                      (in_Position.y * abs(barHeight)) + barMin + shift.y, 
+                      in_Position.z, 1.0);
+}
+
 void main()
 {
-  float barHeight = ohlc.w - ohlc.x; // close - open
-  // Supply the colour into the vertex shader?
-  float barSpacing = 0.1;             // Supply this as a uniform later
-  float barWidth = 0.5;                // bar width as a portion of spacing
-  gl_Position = vec4(((in_Position.x * barWidth + offset.x)) * barSpacing + shift.x,
-                     (in_Position.y * barHeight) + ohlc.x + shift.y, 
-                     in_Position.z, 1.0);
+  if (drawElement > 0.0) { drawBar(); }
+  else { drawWick(); }
 }
 ")
 
 (defparameter *chart-fragment-prog*
   "#version 330
+in vec4 barColour;
 out vec4 out_Color;
 void main() 
 {
-    out_Color = vec4(1.0, 1.0, 1.0, 1.0); 
+   out_Color = barColour;
 }
 ")
 
