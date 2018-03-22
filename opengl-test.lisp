@@ -106,19 +106,22 @@
       (running t)
       (shader-holder (make-instance 'shader-holders))
       (frame-tracker (cons 0 0)) ; Format is (frames_remaining, last_timestamp)
-      (direction 0.0001))
+      (direction 0.005))
 
   (defun process-key (keysym)
     (let ((scancode (sdl2:scancode-value keysym))
 	  (sym (sdl2:sym-value keysym))
 	  (mod-value (sdl2:mod-value keysym)))
       (cond
-	((sdl2:scancode= scancode :scancode-a) (decf pos 0.1))
-	((sdl2:scancode= scancode :scancode-d) (incf pos 0.1))
-	((sdl2:scancode= scancode :scancode-w) (incf vpos 0.1))
-	((sdl2:scancode= scancode :scancode-s) (decf vpos 0.1))
-	
-	; ESC scancode has to be set as 41
+	;; Key strokes for navigation
+	((sdl2:scancode= scancode :scancode-left) (decf pos 0.1))
+	((sdl2:scancode= scancode :scancode-right) (incf pos 0.1))
+	((sdl2:scancode= scancode :scancode-up) (incf vpos 0.1))
+	((sdl2:scancode= scancode :scancode-down) (decf vpos 0.1))
+	;; 75 is PG up, 78 is PG down
+	((sdl2:scancode= scancode 75) (incf vpos 0.5))
+	((sdl2:scancode= scancode 78) (decf vpos 0.5))
+	;; ESC scancode has to be set as 41
 	((sdl2:scancode= scancode 41) (setf running nil)))
       (format t "Key sym: ~a, code: ~a, mod: ~a~%"
 	      sym
